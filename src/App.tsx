@@ -42,9 +42,7 @@ function App() {
   const [purchaseModal, setPurchaseModal] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [purchased, setPurchased] = useState(false)
-  const [playingVideo, setPlayingVideo] = useState<number | null>(null)
-
-  const handlePurchase = (planId: string) => {
+  const handlePurchase = (_planId: string) => {
     if (!email) return
     setPurchased(true)
     setTimeout(() => setPurchaseModal(null), 3000)
