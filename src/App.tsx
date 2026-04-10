@@ -14,13 +14,37 @@ const freeSamples = [
 
 const plans = [
   {
-    id: 'starter', name: 'Starter', price: '$19', features: ['100 Viral Hooks', 'Text hook scripts (PDF)', 'Video hook templates', '1 niche pack', 'Commercial license'], color: '#06b6d4', highlight: false,
+    id: 'starter',
+    name: 'Starter',
+    price: '$19',
+    priceRaw: 19,
+    features: ['100 Viral Hooks', 'Text hook scripts (PDF)', 'Video hook templates', '1 niche pack', 'Commercial license'],
+    color: '#06b6d4',
+    highlight: false,
+    description: 'Perfect for trying the system',
+    paymentLink: 'https://buy.stripe.com/YOUR_STARTER_LINK',
   },
   {
-    id: 'pro', name: 'Pro', price: '$39', features: ['300 Viral Hooks', 'Text + Video + Audio hooks', 'Swipe file (500+ lines)', '5 niche packs', 'BONUS: Hook Formula Guide', 'Priority support'], color: '#a855f7', highlight: true,
+    id: 'pro',
+    name: 'Pro',
+    price: '$39',
+    priceRaw: 39,
+    features: ['300 Viral Hooks', 'Text + Video + Audio hooks', 'Swipe file (500+ lines)', '5 niche packs', 'BONUS: Hook Formula Guide', 'Priority support'],
+    color: '#a855f7',
+    highlight: true,
+    description: 'Most popular — best value',
+    paymentLink: 'https://buy.stripe.com/YOUR_PRO_LINK',
   },
   {
-    id: 'vault', name: 'Vault', price: '$79', features: ['500 Viral Hooks', 'Everything in Pro', 'Monthly hook updates', 'Private community', 'Custom niche requests (3x)', 'Lifetime access'], color: '#ec4899', highlight: false,
+    id: 'vault',
+    name: 'Vault',
+    price: '$79',
+    priceRaw: 79,
+    features: ['500 Viral Hooks', 'Everything in Pro', 'Monthly hook updates', 'Private community', 'Custom niche requests (3x)', 'Lifetime access'],
+    color: '#ec4899',
+    highlight: false,
+    description: 'For serious content creators',
+    paymentLink: 'https://buy.stripe.com/YOUR_VAULT_LINK',
   },
 ]
 
@@ -38,242 +62,303 @@ const faqs = [
   { q: 'Do I need any editing skills?', a: 'No! The video hooks are ready to use. For text hooks, just copy the script into your video or caption. 30 seconds to apply.' },
 ]
 
-function App() {
-  const [purchaseModal, setPurchaseModal] = useState<string | null>(null)
-  const [email, setEmail] = useState('')
-  const [purchased, setPurchased] = useState(false)
-  const handlePurchase = (_planId: string) => {
-    if (!email) return
-    setPurchased(true)
-    setTimeout(() => setPurchaseModal(null), 3000)
+// ─── Stripe Pay Button ─────────────────────────────────────────────────────────
+function StripePayButton({ plan, label }: { plan: typeof plans[0], label: string }) {
+  const [loading, setLoading] = useState(false)
+
+  const handleBuy = () => {
+    setLoading(true)
+    // Redirect to Stripe Payment Link — no backend needed
+    window.location.href = plan.paymentLink
   }
+
+  return (
+    <button
+      onClick={handleBuy}
+      disabled={loading}
+      className="w-full py-3 rounded-lg font-bold text-white text-sm cursor-pointer transition-all hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+      style={{ background: `linear-gradient(135deg, ${plan.color}, ${plan.color}dd)` }}
+    >
+      {loading ? 'Redirecting...' : label}
+    </button>
+  )
+}
+
+// ─── Email Capture Modal (for email delivery after Stripe) ───────────────────
+function EmailModal({ plan, onClose }: { plan: typeof plans[0], onClose: () => void }) {
+  const [email, setEmail] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email) return
+    setSubmitted(true)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(8px)' }}>
+      <div className="w-full max-w-md rounded-2xl p-6 relative" style={{ background: '#111827', border: '1px solid #374151' }}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white text-xl cursor-pointer" style={{ background: 'none', border: 'none' }}>✕</button>
+
+        {submitted ? (
+          <div className="text-center py-8">
+            <div className="text-5xl mb-4">✅</div>
+            <h3 className="text-white text-xl font-bold mb-2">You're in!</h3>
+            <p className="text-gray-400">Check your inbox — your {plan.name} pack link is on its way.</p>
+          </div>
+        ) : (
+          <>
+            <div className="text-center mb-6">
+              <span className="inline-block px-3 py-1 rounded-full text-xs font-bold mb-3" style={{ background: `${plan.color}20`, color: plan.color }}>{plan.name} Pack</span>
+              <h3 className="text-white text-2xl font-bold">{plan.price}</h3>
+              <p className="text-gray-400 text-sm mt-1">{plan.description}</p>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <label className="text-gray-300 text-sm font-medium block mb-2">Your email address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                className="w-full px-4 py-3 rounded-xl text-white text-sm mb-4 outline-none"
+                style={{ background: '#1a1a2e', border: '1px solid #374151' }}
+              />
+              <StripePayButton plan={plan} label={`Buy ${plan.name} — ${plan.price}`} />
+              <p className="text-gray-500 text-xs text-center mt-3">🔒 Secure payment via Stripe. Cancel anytime.</p>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── FAQ Accordion ─────────────────────────────────────────────────────────────
+function FaqItem({ q, a }: { q: string, a: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="border-b border-gray-800" style={{ borderColor: '#1f2937' }}>
+      <button onClick={() => setOpen(!open)} className="w-full text-left py-4 flex justify-between items-center cursor-pointer" style={{ background: 'none', border: 'none' }}>
+        <span className="text-gray-200 font-medium text-sm">{q}</span>
+        <span className="text-gray-500 text-lg ml-3">{open ? '−' : '+'}</span>
+      </button>
+      {open && <p className="text-gray-400 text-sm pb-4 leading-relaxed">{a}</p>}
+    </div>
+  )
+}
+
+// ─── Testimonial Card ──────────────────────────────────────────────────────────
+function TestimonialCard({ t }: { t: typeof testimonials[0] }) {
+  return (
+    <div className="rounded-2xl p-5" style={{ background: '#1a1a2e', border: '1px solid #1f2937' }}>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{ background: 'linear-gradient(135deg, #D4AF37, #b8962e)' }}>{t.avatar}</div>
+        <div>
+          <div className="text-white text-sm font-semibold">{t.name}</div>
+          <div className="text-gray-500 text-xs">{t.handle}</div>
+        </div>
+      </div>
+      <p className="text-gray-300 text-sm leading-relaxed">"{t.quote}"</p>
+    </div>
+  )
+}
+
+// ─── Main App ──────────────────────────────────────────────────────────────────
+export default function App() {
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+  const [showAll, setShowAll] = useState(false)
+
+  const displayedSamples = showAll ? freeSamples : freeSamples.slice(0, 4)
+  const selectedPlanObj = plans.find(p => p.id === selectedPlan)
 
   return (
     <div className="min-h-screen" style={{ background: '#0a0a0f', fontFamily: 'Inter, system-ui, sans-serif' }}>
 
-      {/* Purchase Modal */}
-      {purchaseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.9)' }}>
-          <div className="w-full max-w-md rounded-2xl p-6" style={{ background: '#111827', border: '1px solid #374151' }}>
-            {purchased ? (
-              <div className="text-center py-8">
-                <div className="text-5xl mb-4">🎉</div>
-                <h3 className="text-2xl font-bold text-white mb-2">You're in!</h3>
-                <p className="text-gray-400">Download link sent to <span className="text-purple-400 font-semibold">{email}</span><br/>Check your inbox — it usually arrives in under 1 minute.</p>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-white font-bold text-xl">Complete Purchase</h3>
-                  <button onClick={() => setPurchaseModal(null)} className="text-gray-400 hover:text-white text-2xl cursor-pointer">×</button>
-                </div>
-                <p className="text-gray-400 text-sm mb-4">Enter your email to receive the {plans.find(p => p.id === purchaseModal)?.name} pack download link.</p>
-                <div className="mb-4 p-4 rounded-xl" style={{ background: '#1a1a2e', border: `1px solid ${plans.find(p => p.id === purchaseModal)?.color}40` }}>
-                  <div className="text-white font-semibold">{plans.find(p => p.id === purchaseModal)?.name} Pack</div>
-                  <div className="text-2xl font-bold mt-1" style={{ color: plans.find(p => p.id === purchaseModal)?.color }}>{plans.find(p => p.id === purchaseModal)?.price}</div>
-                </div>
-                <input type="email" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} className="w-full rounded-lg px-4 py-3 mb-3 text-sm outline-none" style={{ background: '#0a0a0f', border: '1px solid #374151', color: '#e6edf3' }} />
-                <button onClick={() => email && handlePurchase(purchaseModal)} disabled={!email} className="w-full py-3 rounded-lg font-bold text-white text-sm cursor-pointer transition-all disabled:opacity-40" style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)' }}>
-                  Send My Download Link →
-                </button>
-                <p className="text-gray-600 text-xs text-center mt-2">Instant delivery · No account needed · Secure</p>
-              </>
-            )}
-          </div>
-        </div>
+      {/* Email Modal */}
+      {selectedPlanObj && (
+        <EmailModal plan={selectedPlanObj} onClose={() => setSelectedPlan(null)} />
       )}
 
-      {/* NAV */}
-      <nav className="sticky top-0 z-40 px-6 py-4 flex items-center justify-between" style={{ background: 'rgba(10,10,15,0.9)', backdropFilter: 'blur(20px)', borderBottom: '1px solid #1f1f2e' }}>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black" style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)', color: 'white' }}>⚡</div>
-          <span className="text-white font-bold text-lg">VIRAL<span className="text-purple-400">HOOKS</span>VAULT</span>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={() => document.getElementById('samples')?.scrollIntoView({ behavior: 'smooth' })} className="text-gray-400 hover:text-white text-sm cursor-pointer transition-colors">Free Samples</button>
-          <button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="text-gray-400 hover:text-white text-sm cursor-pointer transition-colors">Pricing</button>
-          <button onClick={() => setPurchaseModal('pro')} className="text-white text-sm font-semibold px-5 py-2 rounded-full cursor-pointer transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)' }}>Get Started</button>
-        </div>
-      </nav>
-
-      {/* HERO */}
-      <section className="relative overflow-hidden px-6 py-20 text-center">
-        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 0%, #a855f715, transparent)' }} />
-        <div className="relative max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-6 text-xs" style={{ background: '#a855f715', border: '1px solid #a855f730' }}>
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-            <span className="text-purple-300">500+ hooks sold · Updated weekly</span>
+      {/* ─── HERO ─── */}
+      <header className="relative overflow-hidden">
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(212,175,55,0.06) 0%, transparent 60%)' }} />
+        <div className="max-w-5xl mx-auto px-5 pt-16 pb-14 text-center relative">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6" style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)' }}>
+            <span className="text-yellow-500 text-sm font-medium">🎣</span>
+            <span className="text-gray-300 text-sm">500 research-backed hooks inside</span>
           </div>
-          <h1 className="text-5xl md:text-7xl font-black text-white mb-4 leading-tight">
-            Make Views <span style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Stop Scrolling</span>
+          <h1 className="text-4xl md:text-6xl font-black text-white mb-4 leading-tight">
+            Viral Hooks<br />
+            <span style={{ background: 'linear-gradient(135deg, #D4AF37, #f5d76e)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Vault</span>
           </h1>
           <p className="text-gray-400 text-xl mb-8 max-w-2xl mx-auto">3 to 10 second video hooks that stop any scroll. AI-generated, proven to work, ready to paste into your next video.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button onClick={() => document.getElementById('samples')?.scrollIntoView({ behavior: 'smooth' })} className="px-8 py-4 rounded-xl font-bold text-white cursor-pointer transition-all hover:scale-105 animate-glow" style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)', fontSize: '16px' }}>
-              🎬 Watch Free Samples →
+            <button onClick={() => setSelectedPlan('pro')} className="text-white text-sm font-semibold px-6 py-3 rounded-full cursor-pointer transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)' }}>
+              Get the Pro Pack — $39
             </button>
-            <button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="px-8 py-4 rounded-xl font-bold text-white cursor-pointer transition-all" style={{ background: '#1f1f2e', border: '1px solid #374151', fontSize: '16px' }}>
-              See Pricing
+            <button onClick={() => document.getElementById('samples')?.scrollIntoView({ behavior: 'smooth' })} className="text-gray-400 text-sm font-medium px-6 py-3 rounded-full border cursor-pointer transition-all hover:border-gray-500" style={{ borderColor: '#374151', background: 'transparent' }}>
+              See Free Samples ↓
             </button>
           </div>
         </div>
+      </header>
+
+      {/* ─── STATS BAR ─── */}
+      <div className="border-t border-b" style={{ borderColor: '#1f2937', background: '#0d0d14' }}>
+        <div className="max-w-5xl mx-auto px-5 py-4 grid grid-cols-3 gap-6 text-center">
+          {[['500+', 'Hook Templates'], ['3 Niches', 'Covered'], ['100%', 'Copy-Paste Ready']].map(([val, label]) => (
+            <div key={label}>
+              <div className="text-xl font-black text-white">{val}</div>
+              <div className="text-gray-500 text-xs mt-0.5">{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ─── FREE SAMPLES ─── */}
+      <section id="samples" className="max-w-5xl mx-auto px-5 py-14">
+        <h2 className="text-white text-2xl font-bold mb-2">Free Hook Samples</h2>
+        <p className="text-gray-400 text-sm mb-8">Tap any hook to preview. Full packs include 300–500 hooks.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {displayedSamples.map((hook, i) => (
+            <div key={hook.id} className="rounded-xl overflow-hidden" style={{ background: '#13132a', border: '1px solid #1f2937' }}>
+              {hook.type === 'video' ? (
+                <div className="relative">
+                  <video src={hook.src} className="w-full aspect-9/16 object-cover" autoPlay muted loop playsInline />
+                  <div className="absolute top-2 left-2 text-2xl">{hook.emoji}</div>
+                  <div className="absolute bottom-2 left-2">
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,0,0,0.7)', color: '#D4AF37' }}>🎬 Video</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4">
+                  <div className="text-xs text-gray-500 mb-2">{hook.niche} · TEXT</div>
+                  <p className="text-gray-200 text-sm font-medium leading-relaxed">"{hook.preview}"</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="text-center mt-6">
+          <button onClick={() => setShowAll(!showAll)} className="text-gray-400 text-sm cursor-pointer hover:text-white transition-colors" style={{ background: 'none', border: 'none' }}>
+            {showAll ? 'Show fewer ↑' : 'See all 8 samples ↓'}
+          </button>
+        </div>
       </section>
 
-      {/* STATS */}
-      <section className="px-6 py-12 border-t border-bottom" style={{ borderColor: '#1f1f2e' }}>
-        <div className="max-w-4xl mx-auto grid grid-cols-3 gap-6 text-center">
-          {[['500+', 'Hooks Available'], ['2.3M+', 'Views Generated'], ['48hr', 'Avg. Delivery']].map(([v, l]) => (
-            <div key={l as string}>
-              <div className="text-3xl font-black text-white">{v}</div>
-              <div className="text-gray-500 text-sm mt-1">{l as string}</div>
+      {/* ─── WHAT'S INSIDE ─── */}
+      <section className="max-w-5xl mx-auto px-5 py-14">
+        <h2 className="text-white text-2xl font-bold mb-8 text-center">What's Inside the Vault</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {[
+            ['🎬', 'Video Hooks', 'MP4 files — drop into your content or use as overlays. 9:16 mobile-first format.'],
+            ['📝', 'Text Hooks', '300+ script templates. Hook setup → payoff structure. Just read and record.'],
+            ['🎙️', 'Audio Hooks', 'Voice-over intros in 6 tones. Plug into any video editor.'],
+            ['📊', 'Niche Packs', 'Hooks matched to: Finance, Health, Business, Relationships, Tech, Lifestyle.'],
+            ['💰', 'Swipe File', '500-line swipe file of proven viral hooks. Copy, paste, adapt.'],
+            ['📅', 'Hook Calendar', '30-day posting calendar with hook-of-the-day for each slot.'],
+          ].map(([icon, title, desc]) => (
+            <div key={title} className="rounded-xl p-5" style={{ background: '#13132a', border: '1px solid #1f2937' }}>
+              <div className="text-3xl mb-3">{icon}</div>
+              <h3 className="text-white font-semibold text-sm mb-1">{title}</h3>
+              <p className="text-gray-400 text-xs leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* WHAT ARE HOOKS */}
-      <section className="px-6 py-16 max-w-4xl mx-auto">
-        <h2 className="text-3xl font-bold text-white text-center mb-10">What Is a Viral Hook?</h2>
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="rounded-2xl p-6" style={{ background: '#1a1a2e', border: '1px solid #374151' }}>
-            <div className="text-red-400 text-sm font-bold mb-2">❌ BEFORE (boring)</div>
-            <p className="text-gray-400">"Hey everyone, welcome back to my channel. Today I'm going to talk about..."</p>
-            <p className="text-gray-600 text-sm mt-2">Viewers are gone in 3 seconds. No hook = no reach.</p>
-          </div>
-          <div className="rounded-2xl p-6" style={{ background: '#1a1a2e', border: '1px solid #a855f730' }}>
-            <div className="text-green-400 text-sm font-bold mb-2">✅ AFTER (hooked)</div>
-            <p className="text-white font-medium">"Stop scrolling. You're about to make the same mistake 90% of creators make..."</p>
-            <p className="text-green-300 text-sm mt-2">2.3M views. Algorithm pushed it because people STAYED.</p>
-          </div>
-        </div>
-        <p className="text-center text-gray-400 mt-8">The hook is everything. <strong className="text-white">These packs give you 500+ proven openings</strong> — so every video you post has a fighting chance.</p>
-      </section>
-
-      {/* FREE SAMPLES */}
-      <section id="samples" className="px-6 py-16 border-t" style={{ borderColor: '#1f1f2e' }}>
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-white mb-3">Free Sample Hooks</h2>
-            <p className="text-gray-400">Watch a few examples from the pack. Each one is 3-10 seconds and ready to use.</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {freeSamples.map(sample => (
-              <div key={sample.id} className="rounded-xl overflow-hidden" style={{ background: '#1a1a2e', border: '1px solid #2a2a3e' }}>
-                {sample.type === 'video' ? (
-                  <div className="aspect-[9/16] relative bg-black">
-                    <video src={sample.src} className="w-full h-full object-cover" muted loop playsInline onMouseEnter={e => (e.currentTarget as HTMLVideoElement).play()} onMouseLeave={e => { e.currentTarget.pause(); e.currentTarget.currentTime = 0 }} />
-                    <div className="absolute bottom-2 left-2">
-                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#a855f720', color: '#a855f7' }}>🎬 VIDEO</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4">
-                    <div className="text-xs text-gray-500 mb-2">{sample.niche}</div>
-                    <p className="text-white text-sm font-medium leading-snug">"{sample.preview}"</p>
-                    <div className="text-xs text-gray-600 mt-2">📝 TEXT HOOK</div>
-                  </div>
-                )}
-                <div className="px-4 py-2 text-xs text-gray-500 border-t" style={{ borderColor: '#2a2a3e' }}>{sample.title}</div>
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-gray-500 text-sm mt-6">This is just 8 of 500+ hooks. The full pack has hooks for every niche.</p>
-        </div>
-      </section>
-
-      {/* PRICING */}
-      <section id="pricing" className="px-6 py-16 border-t" style={{ borderColor: '#1f1f2e' }}>
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-white text-center mb-3">Simple Pricing</h2>
-          <p className="text-gray-400 text-center mb-10">One payment. Instant download. Use forever.</p>
-          <div className="grid md:grid-cols-3 gap-6">
-            {plans.map(plan => (
-              <div key={plan.id} className="rounded-2xl p-6 relative" style={{ background: plan.highlight ? '#1a1a2e' : '#111827', border: plan.highlight ? `2px solid ${plan.color}` : '1px solid #1f1f2e' }}>
-                {plan.highlight && <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-bold px-3 py-1 rounded-full text-white" style={{ background: plan.color }}>MOST POPULAR</div>}
-                <div className="text-sm text-gray-400 mb-1">{plan.name}</div>
-                <div className="text-4xl font-black mb-4" style={{ color: plan.color }}>{plan.price}</div>
+      {/* ─── PRICING ─── */}
+      <section id="pricing" className="max-w-5xl mx-auto px-5 py-14">
+        <h2 className="text-white text-3xl font-black mb-2 text-center">Choose Your Pack</h2>
+        <p className="text-gray-400 text-center text-sm mb-10">One-time payment. Lifetime access. Instant delivery.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+          {plans.map(plan => (
+            <div key={plan.id} className="rounded-2xl overflow-hidden" style={{ background: '#13132a', border: plan.highlight ? `2px solid ${plan.color}` : '1px solid #1f2937', transform: plan.highlight ? 'scale(1.03)' : 'none' }}>
+              {plan.highlight && (
+                <div className="text-center py-2 text-xs font-bold" style={{ background: `linear-gradient(135deg, ${plan.color}, ${plan.color}aa)`, color: 'white' }}>
+                  ⭐ MOST POPULAR
+                </div>
+              )}
+              <div className="p-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-white font-bold text-lg">{plan.name}</span>
+                  {plan.highlight && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: `${plan.color}20`, color: plan.color }}>BEST VALUE</span>}
+                </div>
+                <div className="text-4xl font-black text-white mb-1">{plan.price}</div>
+                <div className="text-gray-500 text-xs mb-5">{plan.description}</div>
                 <ul className="space-y-2 mb-6">
-                  {plan.features.map(f => <li key={f} className="flex items-center gap-2 text-sm text-gray-300"><span style={{ color: plan.color }}>✓</span>{f}</li>)}
+                  {plan.features.map(f => (
+                    <li key={f} className="text-gray-300 text-xs flex items-start gap-2">
+                      <span style={{ color: plan.color }}>✓</span> {f}
+                    </li>
+                  ))}
                 </ul>
-                <button onClick={() => setPurchaseModal(plan.id)} className="w-full py-3 rounded-xl font-bold text-white cursor-pointer transition-all hover:scale-105" style={{ background: plan.highlight ? `linear-gradient(135deg, ${plan.color}, #ec4899)` : '#1f1f2e', border: plan.highlight ? 'none' : `1px solid ${plan.color}40` }}>
-                  Get {plan.name} →
+                <button
+                  onClick={() => setSelectedPlan(plan.id)}
+                  className="w-full py-3 rounded-xl font-bold text-white text-sm cursor-pointer transition-all hover:brightness-110"
+                  style={{ background: `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`, border: 'none' }}
+                >
+                  Get {plan.name} — {plan.price}
                 </button>
               </div>
-            ))}
-          </div>
-          <p className="text-center text-gray-600 text-xs mt-6">All packs include instant download · Commercial license · 30-day money-back guarantee</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-center text-gray-500 text-xs mt-6">🔒 Secured by Stripe · Instant digital delivery · No refunds on digital files</p>
+      </section>
+
+      {/* ─── HOW IT WORKS ─── */}
+      <section className="max-w-5xl mx-auto px-5 py-14">
+        <h2 className="text-white text-2xl font-bold mb-8 text-center">How It Works</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[['1', '⚡', 'Buy the Pack', 'Instant PDF + video files after purchase'], ['2', '🎬', 'Paste Into Your Video', 'Layer the hook at the start of your clip'], ['3', '📈', 'Post & Watch It Go', 'Strong opening = Algorithm boost = More reach']].map(([num, icon, title, desc]) => (
+            <div key={num} className="text-center">
+              <div className="text-4xl mb-3">{icon}</div>
+              <div className="text-yellow-500 font-black text-xl mb-1">{num}</div>
+              <h3 className="text-white font-semibold mb-1">{title}</h3>
+              <p className="text-gray-400 text-sm">{desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
-      <section className="px-6 py-16 border-t" style={{ borderColor: '#1f1f2e' }}>
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white mb-10">3 Steps to Viral Videos</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[['1', '⚡', 'Download the Pack', 'Instant PDF + video files after purchase'], ['2', '🎬', 'Paste Into Your Video', 'Layer the hook at the start of your clip'], ['3', '📈', 'Post & Watch It Go', 'Strong opening = Algorithm boost = More reach']].map(([num, icon, title, desc]) => (
-              <div key={num as string} className="text-center">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl mx-auto mb-4" style={{ background: '#a855f720', border: '1px solid #a855f740' }}>{icon}</div>
-                <h3 className="text-white font-bold mb-2">{title}</h3>
-                <p className="text-gray-400 text-sm">{desc}</p>
-              </div>
-            ))}
-          </div>
+      {/* ─── TESTIMONIALS ─── */}
+      <section className="max-w-5xl mx-auto px-5 py-14">
+        <h2 className="text-white text-2xl font-bold mb-8 text-center">What Creators Are Saying</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {testimonials.map(t => <TestimonialCard key={t.name} t={t} />)}
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
-      <section className="px-6 py-16 border-t" style={{ borderColor: '#1f1f2e' }}>
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-white text-center mb-10">What Creators Are Saying</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <div key={i} className="rounded-2xl p-5" style={{ background: '#111827', border: '1px solid #1f1f2e' }}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)', color: 'white' }}>{t.avatar}</div>
-                  <div>
-                    <div className="text-white text-sm font-semibold">{t.name}</div>
-                    <div className="text-gray-500 text-xs">{t.handle}</div>
-                  </div>
-                </div>
-                <p className="text-gray-300 text-sm leading-relaxed">"{t.quote}"</p>
-                <div className="flex mt-3 gap-1">{'★★★★★'.split('').map((s, j) => <span key={j} className="text-yellow-400 text-sm">{s}</span>)}</div>
-              </div>
-            ))}
-          </div>
+      {/* ─── FAQ ─── */}
+      <section className="max-w-3xl mx-auto px-5 py-14">
+        <h2 className="text-white text-2xl font-bold mb-6 text-center">Common Questions</h2>
+        <div className="rounded-2xl overflow-hidden" style={{ background: '#13132a', border: '1px solid #1f2937' }}>
+          {faqs.map(f => <FaqItem key={f.q} q={f.q} a={f.a} />)}
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="px-6 py-16 border-t" style={{ borderColor: '#1f1f2e' }}>
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-white text-center mb-10">FAQ</h2>
-          <div className="space-y-4">
-            {faqs.map((faq, i) => (
-              <div key={i} className="rounded-xl p-5" style={{ background: '#111827', border: '1px solid #1f1f2e' }}>
-                <h4 className="text-white font-semibold mb-2">{faq.q}</h4>
-                <p className="text-gray-400 text-sm">{faq.a}</p>
-              </div>
-            ))}
-          </div>
+      {/* ─── FINAL CTA ─── */}
+      <section className="max-w-5xl mx-auto px-5 py-16 text-center">
+        <div className="rounded-2xl p-10" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.1), rgba(236,72,153,0.1))', border: '1px solid rgba(168,85,247,0.2)' }}>
+          <h2 className="text-white text-3xl font-black mb-3">Stop Making Content That Flops</h2>
+          <p className="text-gray-400 mb-8 max-w-lg mx-auto text-sm">The hook is everything. These packs give you 500+ proven openings — so every video you post has a fighting chance.</p>
+          <button onClick={() => setSelectedPlan('pro')} className="text-white font-bold px-8 py-4 rounded-full text-base cursor-pointer transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)' }}>
+            Get Pro — $39 · Instant Access
+          </button>
         </div>
       </section>
 
-      {/* FINAL CTA */}
-      <section className="px-6 py-20 text-center" style={{ background: 'linear-gradient(135deg, #1a0a2e, #0a0a0f)' }}>
-        <h2 className="text-4xl font-black text-white mb-4">Your Next Video Could Go Viral</h2>
-        <p className="text-gray-400 mb-8">The hook is the only thing that matters. Get 500 of the best ones starting at $19.</p>
-        <button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="px-10 py-4 rounded-xl font-bold text-white cursor-pointer transition-all hover:scale-105 animate-glow" style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)', fontSize: '18px' }}>
-          Get My Hooks Now →
-        </button>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="px-6 py-8 border-t text-center" style={{ borderColor: '#1f1f2e' }}>
-        <p className="text-gray-600 text-sm">© 2026 ViralHooksVault.com · All rights reserved · Commercial license included</p>
-        <p className="text-gray-700 text-xs mt-1">This product contains AI-generated video content. Results may vary. Not affiliated with TikTok or Instagram.</p>
+      {/* ─── FOOTER ─── */}
+      <footer className="border-t" style={{ borderColor: '#1f2937', background: '#080810' }}>
+        <div className="max-w-5xl mx-auto px-5 py-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="text-gray-500 text-sm">© 2026 Viral Hooks Vault · Powered by Stripe</div>
+          <div className="text-gray-600 text-xs">All prices in USD · Digital delivery only</div>
+        </div>
       </footer>
+
     </div>
   )
 }
-
-export default App
